@@ -1,0 +1,62 @@
+global static Object callback(Object state) {
+      
+        list<string> listofState = string.valueof(state).split(',');
+        string pc = listofState[0];
+       
+        
+        state = (object) listofState[1];
+       
+        string methodName = 'POST';
+        string responseResult = '';
+        Provider_Change_Request__c objPCR ;
+        
+       
+        list<string> addressList = new list<string>();
+       
+        try {
+            objPCR = IntakeService.getPCR(pc);
+                                                 
+            HttpResponse response = Continuation.getResponse((String)state);
+         
+            
+            Integer statusCode = response.getStatusCode();
+            if (statusCode >= 2000) {
+                return 'Continuation error: ' + statusCode;
+            }
+           
+            
+            responseResult = response.getBody();
+            
+            Continuation chainedContinuation = null;
+           
+            
+            // if Duplicate Api call has not performed check Validation Api
+            if(!isDuplicateApiCall && isValidationApiTransaciton(objPCR.Parent_Case__c)) {
+                
+                if(String.valueOf(response.getBody()).ContainsIgnoreCase(Configuration.success) || 
+                   String.valueOf(response.getBody()).ContainsIgnoreCase(Configuration.noChange))
+                {
+                    
+                    // Create a Continuation for the HTTPRequest        
+                    chainedContinuation = new Continuation(60);
+                    chainedContinuation.continuationMethod = 'callbackIntake'; 
+                    
+                    APICConnector apicConnector = new APICConnector();
+                    String APIC_INSTANCE_NAME = Configuration.apicIntakeConnection;
+                    //Create Request for Hospital Intake API 
+                    string Endpointurl1 = APIC__c.getValues(APIC_INSTANCE_NAME).Intake_Endpoint__c; 
+                    
+                    
+                    HttpRequest request2 = apicConnector.CreateContinuationRequest(pc,APIC_INSTANCE_NAME,Endpointurl1,'POST');
+                                       
+                    chainedContinuation.state = pc+','+chainedContinuation.addHttpRequest(request2);
+                    return chainedContinuation; 
+                } 
+                else{
+                    
+                    createMessageRecords(objPCR,response,pc);
+                    
+                    responseResult = 'Validation Error';
+                    //return responseResult'Validation Error';
+                }
+                
