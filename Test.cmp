@@ -1,0 +1,111 @@
+<aura:component controller="TestController" implements="force:appHostable,flexipage:availableForAllPageTypes,force:hasRecordId,force:lightningQuickAction" access="global">
+    
+    <!--Force:recordData-->
+    <aura:attribute name="recordId" type="id" 
+                    description="The record object to be displayed"/>
+    <aura:attribute name="record" type="sObject" 
+                    description="The record object to be displayed"/>
+    <aura:attribute name="simpleRecord" type="Object" 
+                    description="A simplified view record object to be displayed"/>
+    <aura:attribute name="recordError" type="String" 
+                    description="An error message bound to force:recordData"/>
+    
+    <aura:attribute name="caseRecordId" type="id" 
+                    description="The record id to be displayed"/>
+    <aura:attribute name="updatedCaseTransactionStatus" type="string" 
+                    description="store the case transaction status coming from continuation server"/>
+    
+    
+    <force:recordData aura:id="record"
+                      layoutType="FULL"
+                      recordId="{!v.recordId}"
+                      targetError="{!v.recordError}"
+                      targetRecord="{!v.record}"
+                      targetFields="{!v.simpleRecord}"
+                      recordUpdated="{!c.loadDetailPage}"
+                      mode="VIEW"  
+                      />
+    <!--/Force:recordData-->
+   
+    
+    <!--Handle Save Success-->
+    <aura:attribute name="saveState" type="String" default="success"/>
+    <aura:handler name="onSaveSuccess" event="force:recordSaveSuccess" action="{!c.handleSaveSuccess}"/>
+    <!--/Handle Save Success-->
+    
+    <!--Continuation Server-->  
+    <aura:handler name="init" value="{!this}" action="{!c.doInit}"/>
+    <aura:attribute name="result" type="String"/>
+    
+    <!--/Continuation Server-->
+    <aura:handler name="change" value="{!v.result}" action="{!c.showPrompt}"/>
+   
+        
+    <article class="slds-card" > <!--style="margin-top: -10px;"-->
+        <div class="slds-card__header slds-grid">
+            <header class="slds-media slds-media_center slds-has-flexi-truncate">
+              <div class="slds-media__body">
+                    <h2>
+                        <aura:if isTrue="{!v.isRecordExist}">
+                            <aura:set attribute="else">
+                                <h2 class="slds-align_absolute-center">{!v.noRecordMessage}</h2>
+                            </aura:set>
+                        </aura:if>
+                    </h2>                                                       
+                </div>   
+            </header> 
+            <div class="slds-no-flex"> 
+                <aura:if isTrue="{!v.isRecordExist}">
+					                                     
+                    <lightning:button aura:id="logacall" 
+                                      label="Log a Call"  
+                                      class="slds-float_left sld-show" 
+                                      onclick="{!c.handleLogACall}"/>
+                 
+                    <lightning:button aura:id="editbutton" 
+                                      label="Edit"  
+                                      class="{!'slds-float_right '+if(v.allowEdit,'slds-show','slds-hide')}" 
+                                      onclick="{!c.handleEditPopupVisibility}"/>
+                </aura:if>
+            </div>
+        </div>
+        
+        <!-- VIEW DETAIL MODE-->
+        <div class="slds-card__body" aura:id="recordview"> {!v.body} </div>
+        <!-- VIEW DETAIL MODE-->
+        
+        <!--MODAL STARTS EDIT-->
+        <div aura:id="editDiv" class="{!if(v.isPopupOpen == true,'slds-show','slds-hide')}">
+            <div class="demo-only" style="height: 640px;">
+                <section auara:id="popup" role="dialog" tabindex="-1" aria-labelledby="modal-heading-01" 
+                         aria-modal="true" aria-describedby="modal-content-id-1"
+                         class="slds-modal slds-fade-in-open">
+                    <div class="slds-modal__container custom-container-width" >
+                        <header class="slds-modal__header">
+                            <button onclick="{!c.closeEditModal}" class="slds-button slds-button_icon slds-modal__close slds-button_icon-inverse" title="Close">
+                                <lightning:icon iconName="utility:close" variant="bare" size="small" alternativeText="Indicates approval"/>
+                                <span class="slds-assistive-text">Close</span>
+                            </button>
+                            <h2 id="modal-heading-01" class="slds-text-heading_medium slds-hyphenate">Edit {!v.providerReqestRecord.Name} </h2>
+                        </header>
+                        <div  class="slds-modal__content slds-p-around_medium" id="modal-content-id-1">
+                            <div style="margin-top:28px;" aura:id="recordEdit">
+                                {!v.edit}
+                            </div>
+                             
+                         </div>
+                         <footer class="slds-modal__footer"> <button class="slds-button slds-button_neutral" onclick="{!c.closeEditModal}">Cancel</button>
+                            <button class="slds-button slds-button_brand" onclick="{!c.handleUpdate}" >Save</button>
+                        </footer>
+                    </div>
+                </section>
+                <div class="slds-backdrop slds-backdrop_open"></div>
+            </div>
+        </div>
+    </article>
+    <iframe aura:id="vfFrame" src="{!'https://' + v.vfHost + '/apex/VF_Continuation'}" frameborder="0" width="0" height="0"/>
+</aura:component>
+                   
+
+
+	
