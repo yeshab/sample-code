@@ -1,0 +1,190 @@
+({
+    //calling Continuation Server on page load
+    doInit: function (cmp, event, helper) {
+        try
+        {
+            var vfBaseURL = "https://" + cmp.get("v.vfHost");
+            
+            // Listen for messages posted by the iframed VF page
+            window.addEventListener("message", function (event) {
+                if (event.origin !== vfBaseURL) {
+                    // Not the expected origin: reject message
+                    return;
+                }
+                console.log('<==event.data.topic==> '+event.data.topic);
+                // Only handle messages we are interested in
+                if (event.data.topic === "com.mycompany.message") {
+                    var resultResponse = event.data.result;
+                    console.log('resultResponse=>>>>>>>>>>'+resultResponse);
+                    // CHECK IF RESULT NOT NULL AND  ALSO NOT FALSE
+                    if(!$A.util.isEmpty(resultResponse)) {
+                        // Split list of string and get case txn status and result
+                        var plainTextList = resultResponse.split("==");
+                        
+                        // set updated new case transactio status
+                        cmp.set("v.updatedCaseTransactionStatus",plainTextList[0]); 
+                        
+                        // if Result Contains Duplicate Address 
+                        if(cmp.get("v.clickOnDuplicateCheck")) {
+                            var dupAddressJsonResponse = plainTextList[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+                            console.log('DUP RESPONSE==>>>'+dupAddressJsonResponse);
+                            
+                            var parsed = JSON.parse(dupAddressJsonResponse);
+                            if(dupAddressJsonResponse.indexOf('moreInformation') !=-1) {
+                                
+                                console.log('Dup Error Message '+parsed.moreInformation);
+                                
+                                cmp.set("v.headerResponse",'Duplicate Check API Response'); 
+                                var prmptHeader = cmp.find("promptheader");
+                                
+                                cmp.set("v.showspinnerView",false);
+                                
+                                helper.showPromptPopup(cmp,event,parsed.moreInformation);
+                                helper.handleEditPopupClose(cmp);
+                            }else{
+                                var results = parsed.duplicateAddressCheckResponse.readDuplilcateAddressCheckResponse.duplicateAddressList;
+                                
+                                // Show Duplicate Address
+                                helper.showDuplicateAddressCheckPopup(cmp,event,results);
+                            }
+                        }else{
+                            if(plainTextList[1].indexOf('Validation Error') !=-1 ) {
+                                cmp.set("v.isValidationApiError",true);
+                            }
+                            
+                            //  get result replace string
+                            var plainText = plainTextList[1].replace(/&quot;/g, '"').replace(/&#39;/g, "'");
+                            
+                            // set plainText in result attribute
+                            if(!helper.isFieldEmpty(cmp.get("v.result"))) {
+                            	cmp.set("v.result", '');             
+                            }
+                            cmp.set("v.result", plainText);    
+                           // helper.handleServerResponsePrompt(cmp,event,helper);
+                        }
+                        
+                    }else{
+                        helper.spinnerVisibility(cmp,event,false);
+                        helper.handleEditPopupClose(cmp,event,helper);
+                    }
+                }
+            }, false);
+        }catch (e) {
+            // Handle error
+            console.error(e);
+        }
+    },
+    
+    // Get provider Details When page Load
+    loadDetailPage: function(cmp, event, helper) {
+        var path ='load';
+        try {
+            // Get case id
+            var recId = cmp.get("v.recordId");
+        	console.log('Loading Case Id 1==>'+recId);
+            
+            // asign case record id
+        	if($A.util.isEmpty(cmp.get("v.caseRecordId"))) 
+            	cmp.set("v.caseRecordId",recId);
+        
+            // Call a function that may throws an Error
+            helper.getProviderRequestList(cmp, event,path);
+        }catch (e) {
+            // Handle error
+            console.error(e);
+        }
+    },
+    // Redirect to Log a Call Page to Create Task
+    handleLogACall : function(cmp,event,helper){
+        try {
+            // Call a function that may throws an Error
+            helper.getFieldsToFillToCreateTask(cmp,event,helper);
+        }catch (e) {
+            // Handle error
+            console.error(e);
+        }
+    },
+    // Show PCR in Edit Mode when Click on Edit button
+    handleEditPopupVisibility : function(cmp,event,helper){
+        try {
+            helper.spinnerVisibility(cmp,event,true);
+            // Call a function that may throws an Error
+            helper.checkUserRecordEditAccess(cmp,event,helper);
+        }
+        catch (e) {
+            // Handle error
+            console.error(e);
+        }
+    },
+    // Update pcr after validate record
+    handleUpdate : function(cmp,event,helper) {
+        try {
+            console.log('Inside handleUpdate Ctr Js');
+            var spinner = cmp.find("spinnerbrand");
+            $A.util.addClass(spinner,'slds-is-fixed');
+            console.log('cmp.get("v.showWh") '+cmp.get("v.showWh"));
+            // check if office hour cmp created
+            if(cmp.get("v.showWh")) 
+            {
+                var officeHourComp = cmp.find("officeHourId");
+                if(!officeHourComp.validateOFficeHourFields())
+                    helper.handleUpdatePCR(cmp,event,helper);
+            }
+            else {
+                // save pcr record
+                helper.handleUpdatePCR(cmp,event,helper);
+            }
+        }catch (e) {
+            // Handle error
+            console.error(e);
+        }
+    },
+    // Handle The event after pcr updates
+    handleSaveSuccess : function(cmp,event, helper) {
+        try {
+            console.log('Inside handleSaveSuccess Ctr js');
+            // Show spinner
+            helper.spinnerVisibility(cmp,event,true);
+            
+            var pcr = cmp.get("v.providerReqestRecord");
+            
+            // check if status is valid
+            var isStatusValid = helper.checkValidStatus(cmp,event,cmp.get("v.providerReqestRecord"));
+            
+            // call Continuation Server Request if status is Valid
+            //if(isStatusValid) {
+            helper.saveTinSLOfficeHours(cmp,event,helper); 
+            
+             //Refresh the cmp.
+             helper.getProviderRequestList(cmp,event,'success');
+        }catch (e) {
+            // Handle error
+            console.error(e);
+        }
+    },
+    // This function will get the new record when owner changed
+    handleRefreshView : function (cmp,event,helper){
+        try {
+            // Call a function that may throws an Error
+            helper.refreshRecordView(cmp,event,helper);
+        }catch (e) {
+            // Handle error
+            console.error(e);
+        }
+    },       
+    closeEditModal : function(cmp,event,helper){
+        try {
+            // Call a function that may throws an Error
+            helper.handleEditPopupClose(cmp);
+        }catch (e) {
+            // Handle error
+            console.error(e);
+        }
+    },
+    continuationCall :function(component,event, helper) {
+         //  vf based url
+        var vfBaseURL = "https://" + component.get("v.vfHost");
+    	helper.validationContinuationServerCall(component,event, vfBaseURL);
+	}    
+    
+})
