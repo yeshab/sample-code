@@ -1,0 +1,9 @@
+	{
+		// Create a Continuation for the HTTPRequest        
+		con = new Continuation(60);
+		requestLabel = con.addHttpRequest(request);
+		con.state = caseID+','+con.addHttpRequest(request)+','+duplicateCheck;
+		
+		con.continuationMethod = 'callback';   
+		
+	}

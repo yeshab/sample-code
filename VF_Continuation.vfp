@@ -1,0 +1,37 @@
+<apex:page showHeader="false" standardStylesheets="false" sidebar="false" applyHtmlTag="false" applyBodyTag="false" docType="html-5.0"
+            controller="ContinuationController">
+    <html>
+    <head>
+        <script>
+           <!--  var lcBaseURL = "https://"+ "{!($Label.LightningEndPointUrl)}"; -->
+          
+            // Listen for messages from the Lightning Component
+            window.addEventListener("message", function (event) {
+                  
+                if (event.origin !== lcBaseURL) {
+                    // Not the expected origin: reject message
+                    return;
+                }
+                // Only handle messages we are interested in  
+                if (event.data.topic === "com.mycompany.message") {
+                    var caseID= event.data.recordId;
+                                       
+                   <!-- Visualforce.remoting.Manager.invokeAction('{!$RemoteAction.ContinuationController.getProduct}', caseID,checkDup, function (result) {
+                        // Send result to Lightning Component
+                        //var message = document.getElementById("message").value;
+					var message = {
+							topic: "com.mycompany.message",
+							result: result
+						};
+                        parent.postMessage(message, lcBaseURL);
+                    });
+                }
+            }, false);-->
+
+        </script>
+
+    </head>
+	<p>Hey There!!</p>
+    </html>
+
+</apex:page>
